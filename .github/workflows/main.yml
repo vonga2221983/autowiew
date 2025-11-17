@@ -1,0 +1,47 @@
+name: Continuous Stealth Browser
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: stealth-browser
+  cancel-in-progress: true   # chỉ chạy 1 session duy nhất
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 370      # allow 6 giờ + 10 phút buffer
+    permissions:
+      actions: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt || pip install playwright
+          playwright install chromium
+
+      - name: Run Browser Script (6 hours)
+        run: python main.py
+
+      - name: Delay before auto-dispatch
+        run: |
+          echo "⏲ Waiting 60 seconds before auto-dispatch..."
+          sleep 60
+
+      - name: Auto-dispatch next run
+        if: ${{ always() }}
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: Continuous Stealth Browser
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: main
